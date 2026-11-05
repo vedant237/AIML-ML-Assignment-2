@@ -1,8 +1,8 @@
-# Push AIML-ML-Assignment-2 to https://github.com/vedant237/AIML-ML-Assignment-2
-# Run in PowerShell from this folder after Git is installed and gh auth login.
+# Push from C:\AIML-ML-Assignment-2 to https://github.com/vedant237/AIML-ML-Assignment-2
+# Prerequisites: Git installed, run once: gh auth login
 
 $ErrorActionPreference = "Stop"
-Set-Location $PSScriptRoot
+Set-Location "C:\AIML-ML-Assignment-2"
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Host "Install Git: https://git-scm.com/download/win"
