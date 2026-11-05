@@ -32,8 +32,8 @@ Classify mobile phones into one of **four price ranges** (0 = low, 1 = medium, 2
 
 `https://github.com/vedant237/AIML-ML-Assignment-2`
 
-**Streamlit Community Cloud (add to submission PDF after deploy):**  
-`https://YOUR-APP-NAME.streamlit.app` ← replace with your live URL from [Streamlit Cloud](https://share.streamlit.io)
+**Live Streamlit App:**  
+https://aiml-ml-assignment-2-7zp9qjtttffmzswfxtrdzb.streamlit.app/
 
 ---
 
