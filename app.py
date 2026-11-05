@@ -75,6 +75,33 @@ APP_THEME_STYLE = """
     .field-label {
         font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 0 0 0.35rem 0;
     }
+    .field-label-compact {
+        font-size: 0.88rem; font-weight: 700; color: #0f172a; margin: 0 0 0.12rem 0;
+    }
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type {
+        padding: 0.35rem 0.55rem 0.45rem 0.55rem !important;
+        border-left-width: 4px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08) !important;
+        margin-bottom: 0.35rem !important;
+    }
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type h3,
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type h4,
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type h5 {
+        font-size: 0.92rem !important;
+        font-weight: 700 !important;
+        margin: 0 0 0.25rem 0 !important;
+        padding: 0 !important;
+        line-height: 1.2 !important;
+    }
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type div[data-testid="stAlert"] {
+        padding: 0.3rem 0.45rem !important;
+        margin: 0 !important;
+        font-size: 0.82rem !important;
+    }
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type div[data-baseweb="select"] {
+        min-height: 2rem !important;
+    }
     div[data-testid="stSelectbox"] label p,
     div[data-testid="stSelectbox"] label span {
         font-weight: 700 !important; color: #0f172a !important; font-size: 1.02rem !important;
@@ -353,24 +380,24 @@ def main() -> None:
             )
 
     with st.container(border=True):
-        st.markdown("### Data Input And Model Selection")
-        col_upload, col_model, col_status = st.columns([1.4, 1.1, 1])
+        st.markdown("##### Data Input And Model Selection")
+        col_upload, col_model, col_status = st.columns([1.4, 1.1, 1], gap="small")
         with col_upload:
-            st.markdown('<p class="field-label">Upload Test Dataset (CSV)</p>', unsafe_allow_html=True)
+            st.markdown('<p class="field-label-compact">Upload Test Dataset (CSV)</p>', unsafe_allow_html=True)
             uploaded = st.file_uploader(
                 "Upload Test Dataset (CSV)",
                 type=["csv"],
                 label_visibility="collapsed",
             )
         with col_model:
-            st.markdown('<p class="field-label">Model Selection</p>', unsafe_allow_html=True)
+            st.markdown('<p class="field-label-compact">Model Selection</p>', unsafe_allow_html=True)
             selected_model = st.selectbox(
                 "Model Selection",
                 list(MODELS.keys()),
-                label_visibility="visible",
+                label_visibility="collapsed",
             )
         with col_status:
-            st.markdown('<p class="field-label">Inference Mode</p>', unsafe_allow_html=True)
+            st.markdown('<p class="field-label-compact">Inference Mode</p>', unsafe_allow_html=True)
             st.success("Pre-Trained Models Ready")
 
     if uploaded is not None:
