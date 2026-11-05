@@ -88,8 +88,8 @@ AIML-ML-Assignment-2/
 
 ## Local / BITS Virtual Lab setup
 
-```bash
-cd AIML-ML-Assignment-2
+```powershell
+cd C:\AIML-ML-Assignment-2
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
