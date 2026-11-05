@@ -106,7 +106,3 @@ pip install -r requirements.txt
 python train_models.py
 streamlit run app.py
 ```
-
----
-
-BITS Pilani WILP · Machine Learning · Assignment 2 · Submission PDF must include: GitHub link, Streamlit link, BITS Lab screenshot, and this README (sections a–d).
