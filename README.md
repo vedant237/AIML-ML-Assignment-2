@@ -49,7 +49,7 @@ Regenerate anytime: `python train_models.py` (run this on **BITS Virtual Lab** f
 | Naive Bayes | 0.8060 | 0.9490 | 0.8062 | 0.8060 | 0.8059 | 0.7415 |
 | Support Vector Machine | 0.8660 | 0.9795 | 0.8675 | 0.8660 | 0.8666 | 0.8214 |
 
-*After re-running `train_models.py` with the latest script (MinMax scaling + KNN `k=5`), update this table from `training_metrics.json`.*
+**Streamlit app:** `app.py` — professional evaluation dashboard (Plotly charts, bundled `test_data.csv`, CSV upload, five models, full metrics). Re-run `python train_models.py` and refresh `training_metrics.json` / this table if you retrain.
 
 ### Observations
 
