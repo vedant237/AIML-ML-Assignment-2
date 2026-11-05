@@ -313,11 +313,6 @@ def render_header() -> None:
         f"""
         <div class="app-hero">
             <h1>Mobile Price Classification System</h1>
-            <p>
-                Professional blue evaluation dashboard for five pre-trained classifiers.
-                Upload labeled test data (CSV), select a model, and review metrics.
-                No model retraining is performed in this application.
-            </p>
             <span class="status-chip">Five ML Models</span>
             <span class="status-chip">Inference Only</span>
             <span class="status-chip">Build {app_mtime}</span>
