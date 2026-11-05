@@ -32,12 +32,24 @@ Classify mobile phones into one of **four price ranges** (0 = low, 1 = medium, 2
 
 `https://github.com/vedant237/AIML-ML-Assignment-2`
 
+**Streamlit Community Cloud (add to submission PDF after deploy):**  
+`https://YOUR-APP-NAME.streamlit.app` ← replace with your live URL from [Streamlit Cloud](https://share.streamlit.io)
+
 ---
 
 ## d. Models used
 
+The following **five classifiers** are implemented on the **same dataset** (scikit-learn, saved under `model/`):
+
+1. Logistic Regression  
+2. Decision Tree Classifier  
+3. K-Nearest Neighbor Classifier  
+4. Naive Bayes Classifier (Gaussian)  
+5. Support Vector Machine  
+
 All models trained on **1,500** rows; metrics below on **500** held-out rows (`test_data.csv`).  
-Regenerate anytime: `python train_models.py` (run this on **BITS Virtual Lab** for your screenshot).
+Metrics: **Accuracy**, **AUC** (weighted OVR), **Precision**, **Recall**, **F1**, **MCC**.  
+Regenerate: `python train_models.py` (run on **BITS Virtual Lab** for your screenshot).
 
 ### Comparison table
 
@@ -70,11 +82,12 @@ Regenerate anytime: `python train_models.py` (run this on **BITS Virtual Lab** f
 AIML-ML-Assignment-2/
 ├── app.py                      # Streamlit app (deploy this file)
 ├── train_models.py             # Training + export script
-├── requirements.txt
+├── requirements.txt            # streamlit, scikit-learn, plotly, etc.
 ├── README.md
-├── mobile_price_dataset.csv    # Full labeled training data
-├── test_data.csv               # Labeled hold-out for app upload
+├── mobile_price_dataset.csv    # Full labeled training data (test CSV in repo)
+├── test_data.csv               # Labeled hold-out for Streamlit upload
 ├── training_metrics.json       # Metrics for README table
+├── .streamlit/config.toml      # App theme
 └── model/
     ├── metadata.json
     ├── logistic_regression.joblib
