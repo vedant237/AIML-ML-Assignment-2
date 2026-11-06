@@ -89,6 +89,12 @@ def polish_heading_title(phrase: str) -> str:
     return t
 
 
+def toc_topic_display(phrase: str) -> str:
+    """Table of contents topic: title polish, but README section letters stay lowercase in parentheses."""
+    t = polish_heading_title(phrase)
+    return re.sub(r"\(([A-Za-z])\)", lambda m: f"({m.group(1).lower()})", t)
+
+
 _OBSERVATION_BOLD_TERMS = (
     "Confusion Matrix",
     "Logistic Regression",
@@ -406,7 +412,7 @@ class SubmissionPDF(FPDF):
         ]
         row_heights: list[float] = []
         for _sec, topic, _pg in toc_rows:
-            nlines = self._lines_for_cell(topic, col_topic - 2 * pad, 8.2)
+            nlines = self._lines_for_cell(toc_topic_display(topic), col_topic - 2 * pad, 8.2)
             row_heights.append(max(8.5, lh * float(nlines) + 2 * pad))
         header_row_h = 8.0
         card_vpad = 3.0
@@ -449,7 +455,7 @@ class SubmissionPDF(FPDF):
             self.multi_cell(col_sec - 2 * pad, lh, _sec, border=0, align="C")
             self.set_font("Helvetica", "B", 8.2)
             self.set_xy(inner_x + col_sec + pad, y0r + pad)
-            self.multi_cell(col_topic - 2 * pad, lh, polish_heading_title(topic), border=0, align="L")
+            self.multi_cell(col_topic - 2 * pad, lh, toc_topic_display(topic), border=0, align="L")
             self.set_font("Helvetica", "B", 8.0)
             self.set_text_color(71, 85, 105)
             self.set_xy(inner_x + col_sec + col_topic + pad, y0r + pad)
