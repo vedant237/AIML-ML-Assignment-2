@@ -1,43 +1,54 @@
 # Machine Learning — Assignment 2 (AIML)
 
-End-to-end **multi-class classification** project with five scikit-learn models, evaluation metrics, GitHub artifacts, and a Streamlit deployment app.
+Mobile Price Classification · Multi-Class Models · Streamlit Deployment
 
 ---
 
 ## a. Problem statement
 
-Classify mobile phones into one of **four price ranges** (0 = low, 1 = medium, 2 = high, 3 = very high) using hardware and connectivity specifications. The workflow covers training on a labeled dataset, saving all classifiers, evaluating on a held-out **test_data.csv**, and serving predictions through Streamlit **without retraining** on user uploads.
+The objective is to predict the price range of a mobile phone using hardware and connectivity attributes. This is a multi-class classification problem with four target classes (0–3).
+
+The project implements five classification algorithms on one dataset, evaluates them with standard metrics, stores trained models in the repository, and exposes an interactive Streamlit application. The deployed app loads saved models and evaluates uploaded labeled test CSV files only; no retraining is performed in the app.
 
 ---
 
 ## b. Dataset description
 
-| Field | Value |
-|--------|--------|
-| **Name** | Mobile Price Classification |
-| **Source** | [Kaggle — Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification) (public repository) |
-| **File in repo** | `mobile_price_dataset.csv` (renamed from the original `train.csv`) |
-| **Instances** | 2,000 |
-| **Features** | 20 numeric inputs (`battery_power`, `ram`, `px_height`, etc.) |
-| **Target** | `price_range` — integer classes **0, 1, 2, 3** (multi-class classification) |
-| **Test export** | `test_data.csv` — 500-row stratified hold-out (25%) with **features + target** for Streamlit upload |
+| Item | Description |
+|------|-------------|
+| Dataset name | Mobile Price Classification |
+| Repository | [Kaggle — Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification) |
+| File in GitHub repo | `mobile_price_dataset.csv` (training data; renamed from Kaggle `train.csv`) |
+| Number of instances | 2,000 |
+| Number of features | 20 (numeric): e.g. `battery_power`, `ram`, `px_height`, `px_width`, `mobile_wt` |
+| Target variable | `price_range` — classes 0, 1, 2, 3 |
+| Problem type | Multi-class classification |
+| Test file for app | `test_data.csv` — 500 stratified hold-out rows (25%) with all features and target |
 
-**Note:** The separate Kaggle `test.csv` (with `id` only, no labels) is **not** used for metric evaluation because the assignment requires uploaded CSVs to include the target column.
-
-**Requirement check:** ≥ 12 features ✓ | ≥ 500 instances ✓ | classification ✓
+Assignment criteria: minimum 12 features and 500 instances — satisfied (20 features, 2,000 instances).
 
 ---
 
 ## c. Github Repository Link
 
-`https://github.com/vedant237/AIML-ML-Assignment-2`
+| Resource | Link |
+|----------|------|
+| GitHub repository | [https://github.com/vedant237/AIML-ML-Assignment-2](https://github.com/vedant237/AIML-ML-Assignment-2) |
+| Live Streamlit application | [https://aiml-ml-assignment-2-7zp9qjtttffmzswfxtrdzb.streamlit.app/](https://aiml-ml-assignment-2-7zp9qjtttffmzswfxtrdzb.streamlit.app/) |
 
 ---
 
 ## d. Models used
 
-All models trained on **1,500** rows; metrics below on **500** held-out rows (`test_data.csv`).  
-Regenerate anytime: `python train_models.py` (run this on **BITS Virtual Lab** for your screenshot).
+All models are trained on the same dataset (`mobile_price_dataset.csv`, 1,500 training rows after split). Evaluation metrics below are computed on the held-out test set (`test_data.csv`, 500 rows) using `train_models.py`.
+
+Models implemented:
+
+1. Logistic Regression  
+2. Decision Tree Classifier  
+3. K-Nearest Neighbor Classifier  
+4. Naive Bayes Classifier (Gaussian)  
+5. Support Vector Machine  
 
 ### Comparison table
 
@@ -49,32 +60,33 @@ Regenerate anytime: `python train_models.py` (run this on **BITS Virtual Lab** f
 | Naive Bayes | 0.8060 | 0.9490 | 0.8062 | 0.8060 | 0.8059 | 0.7415 |
 | Support Vector Machine | 0.8660 | 0.9795 | 0.8675 | 0.8660 | 0.8666 | 0.8214 |
 
-*After re-running `train_models.py` with the latest script (MinMax scaling + KNN `k=5`), update this table from `training_metrics.json`.*
+Metrics: weighted precision, recall, and F1 where applicable; AUC computed with one-vs-rest (weighted). Source: `training_metrics.json`.
 
 ### Observations
 
 | ML Model Name | Observation about model performance |
 |---------------|-------------------------------------|
-| Logistic Regression | Best overall on this split: highest accuracy, AUC, F1, and MCC; linear boundaries work well after scaling on separable price tiers driven by RAM and camera features. |
-| Decision Tree | Solid mid-tier performance but more confusion between adjacent price bands (1 vs 2); non-linear splits help but limited depth controls overfitting. |
-| K-Nearest Neighbor | Weakest accuracy; distance-based voting struggles when many scaled features contribute noise; adjacent classes overlap in feature space. |
-| Naive Bayes | Gaussian NB assumes feature independence (not strictly true) yet achieves ~81% accuracy with strong performance on extreme classes 0 and 3. |
-| Support Vector Machine | Strong second place with RBF kernel capturing non-linear structure; slightly more errors on middle classes than logistic regression. |
-| **Overall, Winner for your dataset?** | **Logistic Regression** |
+| Logistic Regression | Ranks first on all six metrics on the 500-row hold-out (e.g. accuracy 0.964, MCC 0.952, multiclass AUC ~0.998). The confusion matrix stays near-diagonal, so mistakes concentrate on adjacent `price_range` bands. With MinMax scaling, linear boundaries track RAM-like and camera-related features well; weighted precision, recall, and F1 remain balanced across classes, which supports selecting this pipeline for deployment and Streamlit scoring. |
+| Decision Tree | Accuracy 0.826 and AUC ~0.88; non-linear splits capture interactions but depth is capped at 12 to limit variance. Error mass sits between neighbouring classes (notably 1 vs 2), consistent with ordinal confusion between mid-tier phones. The tree is interpretable but trails kernel and linear models on this scaled numeric tabular task. |
+| K-Nearest Neighbor | Weakest suite (accuracy 0.532, MCC ~0.38, AUC ~0.77): kNN with k=5 votes in a 20-feature space where class manifolds overlap, so predictions scatter off the diagonal. Euclidean distance after scaling still struggles when many attributes correlate; tuning k or distance metrics would be needed to narrow the gap to the top models. |
+| Naive Bayes | Mid-tier results (accuracy ~0.81, AUC ~0.95) under a Gaussian independence assumption. Performance holds on low vs high tiers more than on overlapping middle bands, which aligns with correlated specs violating conditional independence. It remains a fast baseline but is outpaced by discriminative models on this dataset. |
+| Support Vector Machine | Second overall (accuracy 0.866, MCC ~0.82, AUC ~0.98) using an RBF kernel and probability estimates for AUC. Residual errors lean toward middle classes versus logistic regression, while ranking quality (AUC) stays strong, indicating good separation in score space despite a few more label swaps on the diagonal. |
+| Overall, Winner for your dataset? | Logistic Regression delivers the best trade-off of accuracy, calibration, and MCC on `test_data.csv` under fixed `random_state=42`; it is reported as the recommended model for this assignment and repository snapshot. |
 
 ---
 
-## Repository structure (submission checklist)
+## Appendix — Repository contents
 
 ```
 AIML-ML-Assignment-2/
-├── app.py                      # Streamlit app (deploy this file)
-├── train_models.py             # Training + export script
+├── app.py
+├── train_models.py
 ├── requirements.txt
 ├── README.md
-├── mobile_price_dataset.csv    # Full labeled training data
-├── test_data.csv               # Labeled hold-out for app upload
-├── training_metrics.json       # Metrics for README table
+├── mobile_price_dataset.csv
+├── test_data.csv
+├── training_metrics.json
+├── .streamlit/config.toml
 └── model/
     ├── metadata.json
     ├── logistic_regression.joblib
@@ -84,37 +96,13 @@ AIML-ML-Assignment-2/
     └── svm.joblib
 ```
 
----
+## Appendix — Local execution (BITS Virtual Lab)
 
-## Local / BITS Virtual Lab setup
-
-```bash
-cd AIML-ML-Assignment-2
+```powershell
+cd C:\AIML-ML-Assignment-2
 python -m venv .venv
-.venv\Scripts\activate
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 python train_models.py
 streamlit run app.py
 ```
-
-In the browser: upload `test_data.csv` → pick a model → verify metrics, confusion matrix, and classification report.
-
----
-
-## Streamlit Community Cloud deployment
-
-1. Push the full repo (include `model/*.joblib` and CSV files).
-2. Open [https://streamlit.io/cloud](https://streamlit.io/cloud) → sign in with GitHub.
-3. **New app** → select this repository → branch `main` → main file **`app.py`** → **Deploy**.
-4. Add the live URL to your submission PDF.
-
----
-
-## PDF submission (order)
-
-1. GitHub repository link  
-2. Live Streamlit app link  
-3. Screenshot of execution on **BITS Virtual Lab**  
-4. This README (sections **a** through **d**)
-
-**Deadline:** 8 November 2026, 23:59 — no draft submissions.

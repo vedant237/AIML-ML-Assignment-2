@@ -5,3 +5,6 @@ pandas
 matplotlib
 seaborn
 joblib
+plotly
+fpdf2
+pillow

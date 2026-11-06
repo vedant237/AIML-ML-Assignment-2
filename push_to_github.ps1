@@ -25,7 +25,15 @@ if (-not (Test-Path .git)) {
     git branch -M main
 }
 
-git add app.py train_models.py requirements.txt README.md .gitignore .streamlit test_data.csv mobile_price_dataset.csv training_metrics.json model/
+git add app.py train_models.py build_submission_pdf.py requirements.txt README.md .gitignore .streamlit test_data.csv mobile_price_dataset.csv training_metrics.json model/ `
+  2026aj05282_ML_Assignment_2.pdf `
+  submission_fig01_terminal_train_streamlit.png `
+  submission_fig02_logistic_regression.png `
+  submission_fig03_decision_tree.png `
+  submission_fig04_knn.png `
+  submission_fig05_naive_bayes.png `
+  submission_fig06_svm.png `
+  submission_fig07_all_models_cloud.png
 git status
 
 $changes = git status --porcelain

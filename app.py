@@ -1,18 +1,20 @@
 """
-Assignment 2 — Streamlit evaluation app.
-Upload labeled test CSV; pre-trained models predict and report metrics (no retraining).
+Mobile Price Classification — professional Streamlit dashboard (Assignment 2).
+Paths resolve from this file's folder (C:\\AIML-ML-Assignment-2 when run locally).
 """
 
 from __future__ import annotations
 
 import json
+from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 import joblib
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from sklearn.metrics import (
     accuracy_score,
@@ -29,7 +31,7 @@ ROOT = Path(__file__).resolve().parent
 MODEL_DIR = ROOT / "model"
 DEFAULT_TEST = ROOT / "test_data.csv"
 
-MODEL_CHOICES: dict[str, str] = {
+MODELS: dict[str, str] = {
     "Logistic Regression": "logistic_regression.joblib",
     "Decision Tree": "decision_tree.joblib",
     "K-Nearest Neighbor": "knn.joblib",
@@ -37,212 +39,418 @@ MODEL_CHOICES: dict[str, str] = {
     "Support Vector Machine": "svm.joblib",
 }
 
+METRIC_LABELS = (
+    "Accuracy",
+    "AUC Score",
+    "Precision",
+    "Recall",
+    "F1 Score",
+    "MCC Score",
+)
+
+APP_THEME_STYLE = """
+<style>
+    .block-container { padding-top: 0.75rem !important; padding-bottom: 1.5rem !important; }
+    header[data-testid="stHeader"] { background: rgba(0, 0, 0, 0); }
+    div[data-testid="stToolbar"] { visibility: hidden; height: 0; position: fixed; }
+    .stApp { background: linear-gradient(165deg, #eef2ff 0%, #f0f9ff 45%, #ecfeff 100%); }
+    section[data-testid="stSidebar"] > div {
+        background: linear-gradient(180deg, #dbeafe 0%, #e0e7ff 55%, #cffafe 100%);
+        border-right: 3px solid #2563eb;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 100%) !important;
+        border: 2px solid #60a5fa !important;
+        border-left: 6px solid #2563eb !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12) !important;
+    }
+    div[data-testid="stMetric"] {
+        border: 2px solid #93c5fd !important;
+        border-top: 4px solid #2563eb !important;
+        border-radius: 10px !important;
+        padding: 0.55rem 0.8rem !important;
+        background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%) !important;
+    }
+    .field-label {
+        font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 0 0 0.35rem 0;
+    }
+    .field-label-compact {
+        font-size: 0.88rem; font-weight: 700; color: #0f172a; margin: 0 0 0.12rem 0;
+    }
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type {
+        padding: 0.35rem 0.55rem 0.45rem 0.55rem !important;
+        border-left-width: 4px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08) !important;
+        margin-bottom: 0.35rem !important;
+    }
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type h3,
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type h4,
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type h5 {
+        font-size: 0.92rem !important;
+        font-weight: 700 !important;
+        margin: 0 0 0.25rem 0 !important;
+        padding: 0 !important;
+        line-height: 1.2 !important;
+    }
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type div[data-testid="stAlert"] {
+        padding: 0.3rem 0.45rem !important;
+        margin: 0 !important;
+        font-size: 0.82rem !important;
+    }
+    section[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type div[data-baseweb="select"] {
+        min-height: 2rem !important;
+    }
+    div[data-testid="stSelectbox"] label p,
+    div[data-testid="stSelectbox"] label span {
+        font-weight: 700 !important; color: #0f172a !important; font-size: 1.02rem !important;
+    }
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+        border: 2px solid #2563eb !important; border-radius: 8px !important;
+    }
+    .app-hero {
+        background: linear-gradient(120deg, #1d4ed8 0%, #2563eb 40%, #0284c7 75%, #0891b2 100%);
+        color: #f8fafc; padding: 1rem 1.35rem; border-radius: 12px;
+        margin-bottom: 0.65rem !important; border: 2px solid #1e40af;
+        box-shadow: 0 6px 18px rgba(29, 78, 216, 0.2);
+    }
+    .app-hero h1 {
+        color: #ffffff !important; font-size: 1.55rem !important; font-weight: 700 !important;
+        margin: 0 0 0.3rem 0 !important; padding: 0 !important;
+    }
+    .app-hero p { color: #e0f2fe; margin: 0; font-size: 0.94rem; line-height: 1.45; }
+    .status-chip {
+        display: inline-block; background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.35); border-radius: 999px;
+        padding: 0.15rem 0.65rem; font-size: 0.78rem; margin-top: 0.45rem; margin-right: 0.35rem;
+    }
+    .classification-report-wrap {
+        background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;
+        padding: 0.65rem 0.85rem; overflow-x: auto;
+    }
+    table.classification-report-table {
+        width: 100%; border-collapse: collapse; font-family: "Segoe UI", sans-serif; font-size: 0.92rem;
+    }
+    table.classification-report-table th {
+        background: #f8fafc; color: #334155; font-weight: 600; text-align: center;
+        padding: 0.5rem 0.6rem; border-bottom: 2px solid #e2e8f0;
+    }
+    table.classification-report-table td {
+        padding: 0.45rem 0.6rem; border-bottom: 1px solid #f1f5f9; text-align: center; color: #475569;
+    }
+    table.classification-report-table td.class-label {
+        text-align: left; font-weight: 500; color: #0f172a;
+    }
+    table.classification-report-table td.report-number {
+        font-weight: 600; font-size: 0.94rem; color: #0f172a; font-variant-numeric: tabular-nums;
+    }
+</style>
+"""
+
 
 @st.cache_resource
 def load_metadata() -> dict:
-    path = MODEL_DIR / "metadata.json"
-    with path.open(encoding="utf-8") as handle:
+    with (MODEL_DIR / "metadata.json").open(encoding="utf-8") as handle:
         return json.load(handle)
 
 
 @st.cache_resource
-def load_classifier(joblib_name: str):
-    return joblib.load(MODEL_DIR / joblib_name)
+def load_model(file_name: str):
+    return joblib.load(MODEL_DIR / file_name)
 
 
-def validate_upload(df: pd.DataFrame, meta: dict) -> tuple[pd.DataFrame, pd.Series] | None:
-    target = meta["target_column"]
-    features = meta["feature_columns"]
-    required = features + [target]
-    missing = [col for col in required if col not in df.columns]
+def validate_frame(
+    frame: pd.DataFrame,
+    feature_columns: tuple[str, ...],
+    target_column: str,
+    class_labels: tuple[int, ...],
+) -> tuple[bool, list[str], pd.DataFrame | None, pd.Series | None]:
+    required = list(feature_columns) + [target_column]
+    missing = [column for column in required if column not in frame.columns]
     if missing:
-        st.error("Missing columns in uploaded CSV: " + ", ".join(missing))
-        return None
-
-    extra = [c for c in df.columns if c not in required]
-    if extra:
-        st.warning("Ignoring extra columns: " + ", ".join(extra))
-
-    x = df[features]
-    y = df[target].astype(int)
-    expected = set(meta["class_labels"])
-    if not set(y.unique()).issubset(expected):
-        st.error(f"Target must use class labels {sorted(expected)} only.")
-        return None
-    return x, y
+        return False, missing, None, None
+    target = frame[target_column].astype(int)
+    if not set(target.unique()).issubset(set(class_labels)):
+        return False, [f"Target must use labels {list(class_labels)}."], None, None
+    return True, [], frame[list(feature_columns)], target
 
 
-def score_predictions(y_true: np.ndarray, y_pred: np.ndarray, y_proba: np.ndarray) -> dict[str, float]:
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_proba: np.ndarray) -> dict[str, float]:
     return {
         "Accuracy": float(accuracy_score(y_true, y_pred)),
-        "AUC": float(
-            roc_auc_score(
-                y_true,
-                y_proba,
-                multi_class="ovr",
-                average="weighted",
-            )
-        ),
-        "Precision": float(
-            precision_score(y_true, y_pred, average="weighted", zero_division=0)
-        ),
+        "AUC Score": float(roc_auc_score(y_true, y_proba, multi_class="ovr", average="weighted")),
+        "Precision": float(precision_score(y_true, y_pred, average="weighted", zero_division=0)),
         "Recall": float(recall_score(y_true, y_pred, average="weighted", zero_division=0)),
-        "F1": float(f1_score(y_true, y_pred, average="weighted", zero_division=0)),
-        "MCC": float(matthews_corrcoef(y_true, y_pred)),
+        "F1 Score": float(f1_score(y_true, y_pred, average="weighted", zero_division=0)),
+        "MCC Score": float(matthews_corrcoef(y_true, y_pred)),
     }
 
 
-def draw_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, labels: list[int]) -> None:
-    matrix = confusion_matrix(y_true, y_pred, labels=labels)
-    figure, axis = plt.subplots(figsize=(6, 4.5))
-    heatmap = sns.heatmap(
-        matrix,
-        annot=True,
-        fmt="d",
-        cmap="Purples",
-        xticklabels=labels,
-        yticklabels=labels,
-        ax=axis,
-        annot_kws={"size": 12, "weight": "bold", "color": "white"},
-        linewidths=0.6,
-        linecolor="#ffffff",
+@st.cache_data(show_spinner="Evaluating All Models…")
+def evaluate_all_models(
+    feature_csv: bytes,
+    target_values: tuple[int, ...],
+    feature_columns: tuple[str, ...],
+) -> pd.DataFrame:
+    features = pd.read_csv(BytesIO(feature_csv))
+    y_true = np.array(target_values, dtype=int)
+    rows: list[dict] = []
+    for model_name, model_file in MODELS.items():
+        model = load_model(model_file)
+        preds = model.predict(features[list(feature_columns)])
+        proba = model.predict_proba(features[list(feature_columns)])
+        rows.append({"ML Model Name": model_name, **compute_metrics(y_true, preds, proba)})
+    return pd.DataFrame(rows)
+
+
+def build_classification_report_table(
+    y_true: pd.Series, y_pred: np.ndarray, class_labels: list[int]
+) -> pd.DataFrame:
+    report = classification_report(
+        y_true, y_pred, labels=class_labels, output_dict=True, zero_division=0
     )
-    threshold = matrix.max() / 2.0 if matrix.max() > 0 else 0.5
-    for text in heatmap.texts:
-        value = int(text.get_text())
-        text.set_color("white" if value >= threshold else "#1e1b4b")
-    axis.set_xlabel("Predicted Class", fontsize=13, fontweight="bold", color="#0f172a")
-    axis.set_ylabel("Actual Class", fontsize=13, fontweight="bold", color="#0f172a")
-    axis.set_title("Confusion Matrix", fontsize=14, fontweight="bold", color="#0f172a")
-    axis.tick_params(labelsize=11, colors="#0f172a")
-    st.pyplot(figure)
-    plt.close(figure)
+    rows: list[dict] = []
+    for label in class_labels:
+        block = report[str(label)]
+        rows.append(
+            {
+                "Class": f"Class {label}",
+                "Precision": float(block["precision"]),
+                "Recall": float(block["recall"]),
+                "F1 Score": float(block["f1-score"]),
+                "Support": float(block["support"]),
+            }
+        )
+    if "accuracy" in report:
+        rows.append(
+            {
+                "Class": "Accuracy",
+                "Precision": np.nan,
+                "Recall": np.nan,
+                "F1 Score": float(report["accuracy"]),
+                "Support": float(len(y_true)),
+            }
+        )
+    for key, label in (("macro avg", "Macro Avg"), ("weighted avg", "Weighted Avg")):
+        if key not in report:
+            continue
+        block = report[key]
+        rows.append(
+            {
+                "Class": label,
+                "Precision": float(block["precision"]),
+                "Recall": float(block["recall"]),
+                "F1 Score": float(block["f1-score"]),
+                "Support": float(block["support"]),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
-def evaluate_model(name: str, model, x: pd.DataFrame, y: pd.Series) -> dict[str, float]:
-    preds = model.predict(x)
-    proba = model.predict_proba(x)
-    return score_predictions(y.to_numpy(), preds, proba)
+def format_report_cell(value: float) -> str:
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return "—"
+    if float(value).is_integer():
+        return f"{int(value)}"
+    return f"{value:.3f}"
 
 
-def main() -> None:
-    st.set_page_config(
-        page_title="Mobile Price Classification | ML Assignment 2",
-        page_icon="📱",
-        layout="wide",
+def render_classification_report_html(report_df: pd.DataFrame) -> str:
+    header = "".join(f"<th>{col}</th>" for col in report_df.columns)
+    body_rows = []
+    for _, row in report_df.iterrows():
+        cells = [f'<td class="class-label">{row["Class"]}</td>']
+        for column in ("Precision", "Recall", "F1 Score", "Support"):
+            cells.append(f'<td class="report-number">{format_report_cell(row[column])}</td>')
+        body_rows.append(f"<tr>{''.join(cells)}</tr>")
+    return f"""
+    <div class="classification-report-wrap">
+        <table class="classification-report-table">
+            <thead><tr>{header}</tr></thead>
+            <tbody>{''.join(body_rows)}</tbody>
+        </table>
+    </div>
+    """
+
+
+def build_confusion_matrix_figure(matrix: np.ndarray, class_labels: list[int]) -> go.Figure:
+    tick_labels = [f"Class {label}" for label in class_labels]
+    axis_font = dict(size=16, color="#0f172a", family="Segoe UI, sans-serif")
+    tick_font = dict(size=13, color="#0f172a", family="Segoe UI, sans-serif")
+    figure = go.Figure(
+        data=go.Heatmap(
+            z=matrix,
+            x=tick_labels,
+            y=tick_labels,
+            text=[[str(int(v)) for v in row] for row in matrix],
+            texttemplate="%{text}",
+            textfont=dict(size=14, color="#ffffff", family="Segoe UI, sans-serif"),
+            colorscale=[
+                [0.0, "#7c3aed"],
+                [0.45, "#6d28d9"],
+                [0.75, "#5b21b6"],
+                [1.0, "#4c1d95"],
+            ],
+            colorbar=dict(title=dict(text="Count", font=axis_font), tickfont=tick_font),
+        )
     )
-
-    meta = load_metadata()
-
-    st.title("Mobile Price Range Classification")
-    st.caption(
-        "BITS AIML — Assignment 2 | Pre-trained scikit-learn models | "
-        "Upload **test_data.csv** (features + `price_range`). Models are **not** retrained here."
+    figure.update_layout(
+        template="plotly_white",
+        title=dict(text="Confusion Matrix", font=dict(size=18, color="#0f172a")),
+        height=440,
+        margin=dict(l=78, r=28, t=64, b=76),
+        xaxis=dict(
+            title=dict(text="<b>Predicted Class</b>", font=axis_font, standoff=16),
+            tickfont=tick_font,
+        ),
+        yaxis=dict(
+            title=dict(text="<b>Actual Class</b>", font=axis_font, standoff=16),
+            tickfont=tick_font,
+            autorange="reversed",
+        ),
     )
+    return figure
 
+
+def build_comparison_chart(comparison: pd.DataFrame) -> go.Figure:
+    melted = comparison.melt(id_vars="ML Model Name", var_name="Metric", value_name="Score")
+    figure = px.bar(
+        melted,
+        x="Metric",
+        y="Score",
+        color="ML Model Name",
+        barmode="group",
+        category_orders={"Metric": list(METRIC_LABELS)},
+        title="All Models Comparison Chart",
+        color_discrete_sequence=["#2563eb", "#0891b2", "#7c3aed", "#059669", "#ea580c"],
+    )
+    figure.update_layout(
+        template="plotly_white",
+        legend=dict(title="ML Model Name", orientation="h", y=-0.25),
+        margin=dict(l=40, r=20, t=60, b=80),
+    )
+    figure.update_yaxes(range=[0, 1.05])
+    return figure
+
+
+def render_header() -> None:
+    app_mtime = datetime.fromtimestamp((ROOT / "app.py").stat().st_mtime).strftime("%Y-%m-%d %H:%M")
     st.markdown(
-        """
-        <style>
-            div[data-testid="stSidebar"] .model-selection-label {
-                font-size: 1.05rem;
-                font-weight: 700;
-                color: #0f172a;
-                margin: 0.5rem 0 0.35rem 0;
-            }
-            div[data-testid="stSidebar"] div[data-testid="stSelectbox"] label p {
-                font-weight: 700 !important;
-                color: #0f172a !important;
-                font-size: 1rem !important;
-            }
-        </style>
+        f"""
+        <div class="app-hero">
+            <h1>Mobile Price Classification System</h1>
+            <span class="status-chip">Five ML Models</span>
+            <span class="status-chip">Inference Only</span>
+            <span class="status-chip">Build {app_mtime}</span>
+        </div>
         """,
         unsafe_allow_html=True,
     )
+    st.caption(f"Running from: `{ROOT}`")
+
+
+def main() -> None:
+    st.set_page_config(page_title="Mobile Price Classification System", layout="wide")
+    st.markdown(APP_THEME_STYLE, unsafe_allow_html=True)
+
+    meta = load_metadata()
+    feature_columns = tuple(meta["feature_columns"])
+    target_column = meta["target_column"]
+    class_labels = tuple(meta["class_labels"])
+
+    render_header()
 
     with st.sidebar:
-        st.header("Controls")
-        st.markdown('<p class="model-selection-label">Model Selection</p>', unsafe_allow_html=True)
-        selected = st.selectbox(
-            "Model Selection",
-            list(MODEL_CHOICES.keys()),
-            label_visibility="collapsed",
+        st.markdown("### Application Guide")
+        st.markdown(
+            "1. Upload **Test Dataset (CSV)**  \n"
+            "2. Choose **Model Selection**  \n"
+            "3. Review **Evaluation Metrics**  \n"
+            "4. Inspect **Confusion Matrix** and **Classification Report**  \n"
+            "5. Compare **All Models Performance**"
         )
-        uploaded = st.file_uploader("Upload Test Dataset (CSV)", type=["csv"])
         if DEFAULT_TEST.exists():
             st.download_button(
-                label="Download Sample Test Data",
+                "Download Sample Test Data",
                 data=DEFAULT_TEST.read_bytes(),
                 file_name="test_data.csv",
                 mime="text/csv",
                 use_container_width=True,
             )
-        st.markdown(
-            "**Required:** all 20 feature columns and `price_range` target.  \n"
-            "Use the repository file `test_data.csv` for evaluation."
-        )
+
+    with st.container(border=True):
+        st.markdown("##### Data Input And Model Selection")
+        col_upload, col_model, col_status = st.columns([1.4, 1.1, 1], gap="small")
+        with col_upload:
+            st.markdown('<p class="field-label-compact">Upload Test Dataset (CSV)</p>', unsafe_allow_html=True)
+            uploaded = st.file_uploader(
+                "Upload Test Dataset (CSV)",
+                type=["csv"],
+                label_visibility="collapsed",
+            )
+        with col_model:
+            st.markdown('<p class="field-label-compact">Model Selection</p>', unsafe_allow_html=True)
+            selected_model = st.selectbox(
+                "Model Selection",
+                list(MODELS.keys()),
+                label_visibility="collapsed",
+            )
+        with col_status:
+            st.markdown('<p class="field-label-compact">Inference Mode</p>', unsafe_allow_html=True)
+            st.success("Pre-Trained Models Ready")
 
     if uploaded is not None:
-        data = pd.read_csv(uploaded)
-        st.caption(f"Active file: **{uploaded.name}**")
+        frame = pd.read_csv(uploaded)
+        file_label = uploaded.name
     elif DEFAULT_TEST.exists():
-        data = pd.read_csv(DEFAULT_TEST)
-        st.caption("Active file: **test_data.csv** (bundled hold-out). Upload a CSV to replace.")
+        frame = pd.read_csv(DEFAULT_TEST)
+        file_label = "test_data.csv (bundled)"
     else:
-        st.info("Upload `test_data.csv` or add it to the repository to view metrics.")
+        st.warning("Add test_data.csv to the project folder or upload a labeled CSV.")
         return
-    st.subheader("Uploaded data preview")
-    st.dataframe(data.head(10), use_container_width=True)
 
-    parsed = validate_upload(data, meta)
-    if parsed is None:
+    st.caption(f"Active file: **{file_label}** · Records: **{len(frame):,}**")
+
+    ok, issues, features, target = validate_frame(frame, feature_columns, target_column, class_labels)
+    if not ok:
+        st.error("Uploaded Test Dataset Does Not Match The Required Schema.")
+        st.write(", ".join(issues))
         return
-    x, y = parsed
 
-    model = load_classifier(MODEL_CHOICES[selected])
-    y_pred = model.predict(x)
-    y_proba = model.predict_proba(x)
-    metrics = score_predictions(y.to_numpy(), y_pred, y_proba)
-
-    st.subheader(f"Evaluation Metrics — {selected}")
-    display_metrics = {
-        "Accuracy": metrics["Accuracy"],
-        "AUC Score": metrics["AUC"],
-        "Precision": metrics["Precision"],
-        "Recall": metrics["Recall"],
-        "F1 Score": metrics["F1"],
-        "MCC Score": metrics["MCC"],
-    }
-    metric_cols = st.columns(6)
-    for column, (label, value) in zip(metric_cols, display_metrics.items()):
-        column.metric(label, f"{value:.4f}")
-
-    labels = meta["class_labels"]
-    st.subheader("Confusion Matrix")
-    draw_confusion_matrix(y.to_numpy(), y_pred, labels)
-
-    st.subheader("Classification Report")
-    st.code(
-        classification_report(y, y_pred, labels=labels, zero_division=0),
-        language="text",
+    model = load_model(MODELS[selected_model])
+    predictions = model.predict(features)
+    probabilities = model.predict_proba(features)
+    selected_metrics = compute_metrics(target.to_numpy(), predictions, probabilities)
+    matrix = confusion_matrix(target, predictions, labels=list(class_labels))
+    all_models = evaluate_all_models(
+        features.to_csv(index=False).encode("utf-8"),
+        tuple(target.tolist()),
+        feature_columns,
     )
 
-    st.subheader("All Models Performance On Uploaded Test Data")
-    comparison = []
-    for model_name, file_name in MODEL_CHOICES.items():
-        clf = load_classifier(file_name)
-        row = evaluate_model(model_name, clf, x, y)
-        comparison.append(
-            {
-                "ML Model Name": model_name,
-                "Accuracy": row["Accuracy"],
-                "AUC Score": row["AUC"],
-                "Precision": row["Precision"],
-                "Recall": row["Recall"],
-                "F1 Score": row["F1"],
-                "MCC Score": row["MCC"],
-            }
-        )
-    st.dataframe(pd.DataFrame(comparison).round(4), use_container_width=True)
+    with st.container(border=True):
+        st.markdown(f"### Evaluation Metrics — {selected_model}")
+        cols = st.columns(6)
+        for col, name in zip(cols, METRIC_LABELS):
+            value = selected_metrics[name]
+            col.metric(name, f"{value:.4f}" if name == "MCC Score" else f"{value:.2%}")
+
+    left, right = st.columns(2)
+    with left:
+        with st.container(border=True):
+            st.markdown("### Confusion Matrix")
+            st.plotly_chart(build_confusion_matrix_figure(matrix, list(class_labels)), use_container_width=True)
+    with right:
+        with st.container(border=True):
+            st.markdown("### Classification Report")
+            report_df = build_classification_report_table(target, predictions, list(class_labels))
+            st.markdown(render_classification_report_html(report_df), unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown("### All Models Performance On Uploaded Test Data")
+        st.dataframe(all_models.round(4), use_container_width=True, hide_index=True)
+        st.plotly_chart(build_comparison_chart(all_models), use_container_width=True)
 
 
 if __name__ == "__main__":
